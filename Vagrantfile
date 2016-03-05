@@ -16,5 +16,5 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   # Every Vagrant virtual environment requires a box to build off of.
   config.vm.box = "debian/jessie64"
   config.vm.provision "shell", inline: $script
-  config.vm.synced_folder "apt/", "/var/cache/apt"
+  config.vm.synced_folder "aptcache/", "/var/cache/apt"
 end
