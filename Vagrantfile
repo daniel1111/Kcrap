@@ -1,7 +1,7 @@
 
 $script = <<SCRIPT
 apt-get update
-apt-get install -y cmake g++ libjson0-dev libcurl4-gnutls-dev libutfcpp-dev libboost-dev libmosquittopp-dev libmosquitto-dev mosquitto mosquitto-clients build-essential devscripts debhelper git automake libkrb5-dev
+apt-get install -y build-essential devscripts debhelper automake libkrb5-dev
 
 cd /vagrant/kcrap-0.2.3
 debuild --no-tgz-check -us -uc
