@@ -28,9 +28,14 @@
 
 #define ERRBUF 1024
 static char _errmsg[ERRBUF];
+static struct kcrap_data _extra;
 
 const char* kcrap_errmsg() {
     return _errmsg;
+}
+
+const struct kcrap_data kcrap_get_extra_data() {
+    return _extra;
 }
 
 struct kcrap_context* kcrap_init(char* keytab, char* service) {
@@ -150,6 +155,7 @@ static int auth_rep_decode(struct kcrap_context *context, char* buf, int len, kr
     GETDATA(rep->response, buf, dec_data.length, offset);
     GETINT(rep->error_num, buf, dec_data.length, offset);
     GETDATA(rep->error_msg, buf, dec_data.length, offset);
+    GETDATA(rep->extra_data, buf, dec_data.length, offset);
     
     return 0;
 }
@@ -187,6 +193,11 @@ static int kcrap_recv_rep(struct kcrap_context *context, int sock, int wait_ms, 
 	} else {
 	    error_num = 0;
 	    _errmsg[0] = 0;
+	    
+		
+		
+	
+	    _extra = rep.extra_data;
 	}
 	*auth_status = rep.auth_reply;
 	return error_num;
@@ -389,10 +400,10 @@ int kcrap_try(struct kcrap_context *context, struct kcrap_auth_req_data *req, in
 
     req->pkt_type = KCRAP_PKT_AUTH_REQ;
     if (req->timestamp == 0) {
-	req->timestamp = time(NULL);
-	data.data = (char*)&req->nounce;
-	data.length = sizeof(req->nounce);
-	krb5_c_random_make_octets(context->krb5_context, &data);
+		req->timestamp = time(NULL);
+		data.data = (char*)&req->nounce;
+		data.length = sizeof(req->nounce);
+		krb5_c_random_make_octets(context->krb5_context, &data);
     }
     SETSHORT(req->pkt_type, pktbuf, sizeof(pktbuf), offset);
     SETDATA(req->chal_type, pktbuf, sizeof(pktbuf), offset);
@@ -409,51 +420,56 @@ int kcrap_try(struct kcrap_context *context, struct kcrap_auth_req_data *req, in
     data.length = offset;
 
     if ((sock = kcrap_getsock()) < 0) {
-	return errno;
+		return errno;
     }
-    for (trycount = 0; trycount < 10 && !IS_FINAL(ok);) {
-	for (i = 0; context->servers[i] && !IS_FINAL(ok); i++, trycount++) {
-	    char *portstr;
-	    struct hostent *he;
-	    struct sockaddr_in to;
-	    int j;
-	    char host[NI_MAXHOST+1];
-
-	    strncpy(host, context->servers[i], NI_MAXHOST);
-	    host[NI_MAXHOST] = '\0';
-
-	    if ((portstr = strchr(host, ':')) == NULL) continue;
-	    *portstr = '\0';
-	    portstr++;
-	    if (*portstr == '\0') continue;
-	    memset(&to, 0, sizeof(to));
-	    to.sin_family = AF_INET;
-	    to.sin_port = htons(atoi(portstr));
-	    if (to.sin_port <= 0) continue;
-
-	    if (inet_aton(host, &to.sin_addr) == 1) {
-		if (kcrap_send(context, sock, &to, KCRAP_PKT_AUTH_REQ, &data, &keyblock) <= 0) continue;
-		sent++;
-		ok = kcrap_recv_rep(context, sock, 200, keyblock, req, auth_status);
-	    } else if ((he = gethostbyname(host))) {
-		for (j = 0; he->h_addr_list[j] && !IS_FINAL(ok); j++) {
-		    to.sin_addr = *(struct in_addr*)(he->h_addr_list[j]);
-		    if (kcrap_send(context, sock, &to, KCRAP_PKT_AUTH_REQ, &data, &keyblock) <= 0) continue;
-		    sent++;
-		    ok = kcrap_recv_rep(context, sock, 200, keyblock, req, auth_status);
+    for (trycount = 0; trycount < 10 && !IS_FINAL(ok);)
+    {
+		for (i = 0; context->servers[i] && !IS_FINAL(ok); i++, trycount++)
+		{
+			char *portstr;
+			struct hostent *he;
+			struct sockaddr_in to;
+			int j;
+			char host[NI_MAXHOST+1];
+	
+			strncpy(host, context->servers[i], NI_MAXHOST);
+			host[NI_MAXHOST] = '\0';
+	
+			if ((portstr = strchr(host, ':')) == NULL) continue;
+			*portstr = '\0';
+			portstr++;
+			if (*portstr == '\0') continue;
+			memset(&to, 0, sizeof(to));
+			to.sin_family = AF_INET;
+			to.sin_port = htons(atoi(portstr));
+			if (to.sin_port <= 0) continue;
+	
+			if (inet_aton(host, &to.sin_addr) == 1)
+			{
+				if (kcrap_send(context, sock, &to, KCRAP_PKT_AUTH_REQ, &data, &keyblock) <= 0) continue;
+				sent++;
+				ok = kcrap_recv_rep(context, sock, 200, keyblock, req, auth_status);
+			}
+			else if ((he = gethostbyname(host)))
+			{
+				for (j = 0; he->h_addr_list[j] && !IS_FINAL(ok); j++) {
+					to.sin_addr = *(struct in_addr*)(he->h_addr_list[j]);
+					if (kcrap_send(context, sock, &to, KCRAP_PKT_AUTH_REQ, &data, &keyblock) <= 0) continue;
+					sent++;
+					ok = kcrap_recv_rep(context, sock, 200, keyblock, req, auth_status);
+				}
+			}
 		}
-	    }
-	}
     }
     if (!sent) {
-	close(sock);
-	if (keyblock) krb5_free_keyblock(context->krb5_context, keyblock);
-	if (_errmsg[0] == '\0')
-	    strcpy(_errmsg, "No KCRAP servers defined\n");
-	return KRB5_KDC_UNREACH;
+		close(sock);
+		if (keyblock) krb5_free_keyblock(context->krb5_context, keyblock);
+		if (_errmsg[0] == '\0')
+			strcpy(_errmsg, "No KCRAP servers defined\n");
+		return KRB5_KDC_UNREACH;
     }
     if (!IS_FINAL(ok))
-	ok = kcrap_recv_rep(context, sock, 5000, keyblock, req, auth_status);
+		ok = kcrap_recv_rep(context, sock, 5000, keyblock, req, auth_status);
     close(sock);
     if (keyblock) krb5_free_keyblock(context->krb5_context, keyblock);
     return ok;

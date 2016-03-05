@@ -55,13 +55,14 @@ int main(int argc, char* argv[]) {
 	exit(1);
     }
 
-    while ((ch = getopt(argc, argv, "Vf:k:")) != -1)
+    while ((ch = getopt(argc, argv, "VDf:k:")) != -1)
     switch (ch) {
     case 'V':
 	printf("kcrap_server " KCRAP_VERSION "\n");
 	exit(0);
     case 'D':
 	nodetach++;
+	break;
     case 'f':
 	cfg_file = optarg;
 	break;
@@ -256,7 +257,13 @@ static int handle_auth_req(int sock, krb5_context context, krb5_auth_context aut
     GETDATA(req.client_challenge, message->data, message->length, offset);
     GETDATA(req.response, message->data, message->length, offset);
 
-    auth_ok = do_auth(context, &req, &error_num, &error_msg);
+    struct kcrap_data extra;
+    memset(&extra, 0, sizeof(struct kcrap_data));
+    auth_ok = do_auth(context, &req, &error_num, &error_msg, &extra);
+    
+    #ifdef DEBUG_PASSWORD
+    printf("Extra data length is %d bytes\n", extra.length);
+    #endif
 
     if (auth_ok)
 	auth_ok |= verify_cookie(&req);
@@ -275,6 +282,7 @@ static int handle_auth_req(int sock, krb5_context context, krb5_auth_context aut
     SETDATA(req.response, pktbuf, sizeof(pktbuf), offset);
     SETINT(error_num, pktbuf, sizeof(pktbuf), offset);
     SETDATA(error_msg, pktbuf, sizeof(pktbuf), offset);
+    SETDATA(extra, pktbuf, sizeof(pktbuf), offset);
 
     if ((retval = krb5_c_encrypt_length(context, keyblock->enctype, offset, &len))) {
 	com_err("", retval, "while getting enc length");
