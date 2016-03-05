@@ -1,0 +1,12 @@
+Source: kcrap
+Maintainer: Daniel Swann <debian@dswann.co.uk>
+Section: misc
+Priority: optional
+Standards-Version: 3.9.2
+Build-Depends: debhelper (>= 9)
+
+Package: kcrap
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: KCRAP server
+  Server & library to extend Kerberos to support generic challenge-response authentication
