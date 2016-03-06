@@ -14,7 +14,7 @@
 
 PROG="kcrap"
 PROGRAM="/usr/sbin/kcrap_server"
-PIDFILE="/usr/sbin/kcrap_server"
+PIDFILE="/var/run/kcrap_server.pid"
 DESCR="Kcrap daemon"
 
 set -e
