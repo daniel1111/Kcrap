@@ -47,7 +47,6 @@ int main(int argc, char* argv[]) {
     krb5_keytab keytab = NULL;
     int ch;
     int nodetach = 0;
-    char *optarg;
 
     retval = krb5_init_context(&context);
     if (retval) {
