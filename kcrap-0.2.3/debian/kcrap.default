@@ -1,0 +1,3 @@
+# After configuring (/etc/kcrap_server.conf), 
+# set to yes to start kcrap_server
+RUN=no

@@ -1,0 +1,78 @@
+#!/bin/sh
+# Start/stop the Kcrap daemon.
+
+### BEGIN INIT INFO
+# Provides:          kcrap
+# Required-Start:    $remote_fs $network $syslog
+# Should-Start:      $time krb5-kdc
+# Required-Stop:     $remote_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Kcrap Daemon
+# Description:       Kerberos Challenge-Response Authentication Protocol daemon
+### END INIT INFO
+
+PROG="kcrap"
+PROGRAM="/usr/sbin/kcrap_server"
+PIDFILE="/var/run/kcrap.pid"
+DESCR="Kcrap daemon"
+
+set -e
+
+. /lib/lsb/init-functions
+
+test -f $PROGRAM || exit 0
+
+RUN=no
+
+if [ -r /etc/default/$PROG ]; then
+  . /etc/default/$PROG
+fi
+
+if [ "x$RUN" != "xyes" ] ; then
+    log_success_msg "$NAME disabled; edit /etc/default/kcrap"
+    exit 0
+fi
+
+
+
+export PATH="${PATH:+$PATH:}/usr/sbin:/sbin"
+
+ret=0
+
+case "$1" in
+        start)
+                log_daemon_msg "Starting $DESCR" "$PROG"
+
+                start_daemon -p "$PIDFILE" "$PROGRAM" || ret=$?
+                log_end_msg $ret
+                ;;
+
+        stop)
+                log_daemon_msg "Stopping $DESCR" "$PROG"
+
+                killproc -p "$PIDFILE" || ret=$?
+                log_end_msg $ret
+                ;;
+
+        restart|force-reload)
+
+                $0 stop
+                $0 start
+                ;;
+
+        debug)
+                $PROGRAM -D
+                ;;
+
+        status)
+                status_of_proc -p "$PIDFILE" "$PROGRAM" "$PROG" && exit 0 || exit $?
+                ;;
+
+        *)
+                echo "Usage: $0 start|stop|restart|debug|status"
+                exit 1
+                ;;
+esac
+
+exit 0
