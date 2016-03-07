@@ -52,19 +52,41 @@ int main(int argc, char* argv[]) {
     char cchal[130];
     char resp[24];
     int auth_status;
-    
-    if (argc != 4) {
+    int ch;
+    char *princ_name = NULL;
+    char *keytab = NULL;
+    int arg_count = 0;
+
+    while ((ch = getopt(argc, argv, "p:k:")) != -1)
+      switch (ch)
+      {
+          case 'p':
+              princ_name = optarg;
+              arg_count += 2;
+              break;
+
+          case 'k':
+              keytab = optarg;
+              arg_count += 2;
+              break;
+
+          default:
+              exit(2);
+              break;
+      }
+
+    if (argc-arg_count != 4) {
       fprintf(OSTREAM, "Error: Invalid parameters...\n");
-      fprintf(OSTREAM, "Usage: %s <username> <challenge> <response>\n", argv[0]);
+      fprintf(OSTREAM, "Usage: %s [-p principal name] [-k keytab] <username> <challenge> <response>\n", argv[0]);
       exit(1);
     }
 
-    if (strlen(argv[2]) != 16) {
+    if (strlen(argv[2+arg_count]) != 16) {
       fprintf(OSTREAM, "Error: Invalid challenge length.\n");
       exit(1);
     }
       
-    if (strlen(argv[3]) != 48) {
+    if (strlen(argv[3+arg_count]) != 48) {
       fprintf(OSTREAM, "Error: Invalid response length.\n");
       exit(1);
     }
@@ -76,13 +98,13 @@ int main(int argc, char* argv[]) {
     SDATA(req.chal_type, "NTLM");
 
     // SDATA(req.principal, "user");
-    req.principal.data = argv[1];
-    req.principal.length = strlen(argv[1]);
+    req.principal.data = argv[1+arg_count];
+    req.principal.length = strlen(argv[1+arg_count]);
     
     req.server_challenge.length = 8;
     req.server_challenge.data = schal;
     // FILL(schal, "0123456789abcdef");
-    if (fillhex(schal, argv[2])) {
+    if (fillhex(schal, argv[2+arg_count])) {
       fprintf(OSTREAM, "Error: Invalid challenge string.\n");
       exit(1);
     }      
@@ -90,15 +112,19 @@ int main(int argc, char* argv[]) {
     req.response.length = 24;
     req.response.data = resp;
     // FILL(resp, "25a98c1c31e81847466b29b2df4680f39958fb8c213a9cc6");
-    if (fillhex(resp, argv[3])) {
+    if (fillhex(resp, argv[3+arg_count])) {
       fprintf(OSTREAM, "Error: Invalid response string.\n");
       exit(1);
     }      
 
-    context = kcrap_init(NULL, NULL);
+    if (princ_name == NULL)
+      context = kcrap_init(keytab, NULL);
+    else
+      context = kcrap_init_princ(keytab, princ_name);
+
     if (context == NULL) {
-	fprintf(OSTREAM, "Error: %s\n", kcrap_errmsg());
-	exit(1);
+      fprintf(OSTREAM, "Error: %s\n", kcrap_errmsg());
+      exit(1);
     }
 
     ret = kcrap_try(context, &req, &auth_status);

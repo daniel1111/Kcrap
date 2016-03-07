@@ -63,6 +63,8 @@ struct kcrap_chal_rep_data {
 };
 
 struct kcrap_context* kcrap_init(char* keytab, char* service);
+struct kcrap_context* kcrap_init_princ(char* keytab, char *princ_name);
+struct kcrap_context* kcrap_init_ex(char* keytab, char* service, char *princ_name);
 void kcrap_free(struct kcrap_context *context);
 const char* kcrap_errmsg();
 const struct kcrap_data kcrap_get_extra_data();

@@ -38,64 +38,79 @@ const struct kcrap_data kcrap_get_extra_data() {
     return _extra;
 }
 
+
 struct kcrap_context* kcrap_init(char* keytab, char* service) {
+    return kcrap_init_ex(keytab, service, NULL);
+}
+
+struct kcrap_context* kcrap_init_princ(char* keytab, char *princ_name) {
+    return kcrap_init_ex(keytab, NULL, princ_name);
+}
+
+struct kcrap_context* kcrap_init_ex(char* keytab, char* service, char *princ_name) {
     struct kcrap_context *context;
     krb5_error_code retval;
     char *names[4];
 
     if ((context = calloc(1, sizeof(struct kcrap_context))) == NULL) {
-	strncpy(_errmsg, strerror(errno), ERRBUF);
-	return NULL;
+      strncpy(_errmsg, strerror(errno), ERRBUF);
+      return NULL;
     }
 
     for(;;) {
-	if ((retval = krb5_init_context(&context->krb5_context)))
-	    break;
+      if ((retval = krb5_init_context(&context->krb5_context)))
+      break;
 
-	if ((retval = krb5_get_profile(context->krb5_context, &context->profile)))
-	    break;
+      if ((retval = krb5_get_profile(context->krb5_context, &context->profile)))
+        break;
 
-	/* keytab */
-	if (keytab != NULL) {
-	    if ((retval = krb5_kt_resolve(context->krb5_context, keytab, &context->keytab)))
-		break;
-	}
-    
-	/* my princ */
-	if (service == NULL) service = "host";
-	if ((retval = krb5_sname_to_principal(context->krb5_context, NULL, service, KRB5_NT_SRV_HST, &context->sprinc)))
-	    break;
+      /* keytab */
+      if (keytab != NULL) {
+          if ((retval = krb5_kt_resolve(context->krb5_context, keytab, &context->keytab)))
+            break;
+      }
 
-	/* Get credentials for server */
-	if ((retval = krb5_cc_resolve(context->krb5_context, "MEMORY:kcraplib", &context->ccache))) {
-	    break;
-	}
+      if (princ_name != NULL) {
+          if ((retval = krb5_parse_name(context->krb5_context, princ_name, &context->sprinc))) // "host/gibson@NOTTINGTEST.ORG.UK",
+              break;
+      } else {
+          /* my princ */
+          if (service == NULL) service = "host";
+          if ((retval = krb5_sname_to_principal(context->krb5_context, NULL, service, KRB5_NT_SRV_HST, &context->sprinc)))
+              break;
+      }
 
-	if (krb5_princ_realm(context->krb5_context, context->sprinc)->length == 0) {
-	    strncpy(_errmsg, "Invalid realm for service principal", ERRBUF);
-	    kcrap_free(context);
-	    return NULL;
-	}
+      /* Get credentials for server */
+      if ((retval = krb5_cc_resolve(context->krb5_context, "MEMORY:kcraplib", &context->ccache))) {
+          break;
+      }
 
-	names[0] = "realms";
-	names[1] = malloc(krb5_princ_realm(context->krb5_context, context->sprinc)->length+1);
-	memcpy(names[1], krb5_princ_realm(context->krb5_context, context->sprinc)->data, krb5_princ_realm(context->krb5_context, context->sprinc)->length);
-	names[1][krb5_princ_realm(context->krb5_context, context->sprinc)->length] = 0;
-	names[2] = "kcrap";
-	names[3] = NULL;
+      if (krb5_princ_realm(context->krb5_context, context->sprinc)->length == 0) {
+          strncpy(_errmsg, "Invalid realm for service principal", ERRBUF);
+          kcrap_free(context);
+          return NULL;
+      }
 
-	if ((retval = profile_get_values(context->profile, (const char * const *)names, &context->servers))) {
-	    free(names[1]);
-	    break;
-	}
-	free(names[1]);
-	if (context->servers[0] == NULL) {
-	    strncpy(_errmsg, "No KCRAP servers specified for realm", ERRBUF);
-	    kcrap_free(context);
-	    return NULL;
-	}
+      names[0] = "realms";
+      names[1] = malloc(krb5_princ_realm(context->krb5_context, context->sprinc)->length+1);
+      memcpy(names[1], krb5_princ_realm(context->krb5_context, context->sprinc)->data, krb5_princ_realm(context->krb5_context, context->sprinc)->length);
+      names[1][krb5_princ_realm(context->krb5_context, context->sprinc)->length] = 0;
+      names[2] = "kcrap";
+      names[3] = NULL;
 
-	return context;
+      if ((retval = profile_get_values(context->profile, (const char * const *)names, &context->servers))) {
+          free(names[1]);
+          break;
+      }
+
+      free(names[1]);
+      if (context->servers[0] == NULL) {
+          strncpy(_errmsg, "No KCRAP servers specified for realm", ERRBUF);
+          kcrap_free(context);
+          return NULL;
+      }
+
+      return context;
     }
 
     strncpy(_errmsg, error_message(retval), ERRBUF);
