@@ -6,5 +6,5 @@ This repository builds a Debian package for [Kcrap](http://www.spock.org/kcrap/)
 
 ## Building
 
-There's a [Vagrantfile](https://www.vagrantup.com/docs/getting-started/), so just run 'vagrant up' to build the packages for Debian/Jessie/amd64.
+There's a [Vagrantfile](https://www.vagrantup.com/docs/getting-started/), so just run 'vagrant up' to build the packages for Debian/Buster/amd64.
 
